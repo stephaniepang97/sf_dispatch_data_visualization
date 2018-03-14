@@ -1,17 +1,18 @@
 /*
  * Parse the data and create a graph with the data.
  */
-function parseData(createGraph) {
+function parseData(createGraphOne) {
 	Papa.parse("../data/sfpd_dispatch_data_subset.csv", {
 		download: true,
 		complete: function(results) {
 			console.log(results.data);
-			createGraph(results.data);
+			createGraphOne(results.data);
+			createGraphTwo(results.data);
 		}
 	});
 }
 
-function createGraph(data) {
+function createGraphOne(data) {
 	var zipcode_finalPri = ["zipcode_finalPri"];
 
 	// 2d array. first number is the zipcode, next number is the final_priority
@@ -79,7 +80,6 @@ function createGraph(data) {
 			}
 		}
 	}
-	console.log(zipcode_num2_num3);
 
 	// now that zipcode_num2_num3 is an arr[] in the format
 	// [ [zipcode, count of 2, count of 3],  [zipcode, count of 2, count of 3], ...]
@@ -102,12 +102,9 @@ function createGraph(data) {
 		count3s.push(zipcode_num2_num3[i][2]);
 	}
 
-	console.log(count3s);
-	console.log(count2s);
-	console.log(zipcodes);
-
 	var chart = c3.generate({
-    data: {
+		bindto: '#chart',
+    	data: {
 	        x : 'x',
 	        columns: [
 	            zipcodes,
@@ -121,10 +118,107 @@ function createGraph(data) {
 	    },
 	    axis: {
 	        x: {
-	            type: 'category' // this needed to load string x value
-	        }
-	    }
+	            type: 'category', // this needed to load string x value
+	            label: {
+	            	text: 'Zipcode',
+	            	position: 'outer-center'
+	            }
+	        },
+	        y: {
+            	label: {
+            		text: 'Count',
+            		position: 'outer-middle'
+            	}
+        	},
+	    },
 	});
+}
+
+function createGraphTwo(data) {
+	// create a bar graph that shows the number of Alarms, non life threatening,
+	// potentially life threatening, and fire calls for every zipcode in SF
+
+	var zipcode_callType = ["zipcode_callType"];
+
+	for (var i = 0; i < data.length; i++) {
+		var inner_arr = [];
+		inner_arr.push(data[i][17]);
+		inner_arr.push(data[i][25]);
+		zipcode_callType.push(inner_arr);
+	}
+
+	zipcode_callType.sort(sortFunction);
+
+	zipcode_callType.splice(0, 2);
+
+	console.log(zipcode_callType);
+
+	countF = 0;
+	countA = 0;
+	countPLT = 0;
+	countNLT = 0;
+	zipcode_numF_numA_numPLT_numNLT = [ ["94102", 0, 0, 0, 0] ];
+
+	for (var i = 0; i < 28; i++) {
+		zipcode_numF_numA_numPLT_numNLT.push([0, 0, 0, 0, 0]);
+	}
+
+	var j = 0;
+	for (var i = 0; i < zipcode_callType.length; i++) {
+		/* for every year in zipcode_finalPri, check if that exists in zipcode_num2_num3
+		*  if it does, add one to count2 if the final_priority is 2
+		*  add one to count3 if the final_priority is 3
+		*  if the zipcode doesnt exist, add new year to zipcode_num2_num3
+		*  and increment count2 or count3 corresspondingly
+		*/
+		if (zipcode_callType[i][0] == zipcode_numF_numA_numPLT_numNLT[j][0]) {
+			if (zipcode_callType[i][1] == "Fire") {
+				countF++;
+			}
+			else if (zipcode_callType[i][1] == "Alarm") {
+				countA++;
+			}
+			else if (zipcode_callType[i][1] == "Potentially Life-Threatening") {
+				countPLT++;
+			}
+			else if (zipcode_callType[i][1] == "Non Life-threatening") {
+				countNLT++;
+			}
+		}
+		else {
+			// moving on to a new zipcode,
+			// so add count2 and count3 to the previous zipcode and reset the counts
+			j++;
+			zipcode_numF_numA_numPLT_numNLT[j-1][1] = countF;
+			zipcode_numF_numA_numPLT_numNLT[j-1][2] = countA;
+			zipcode_numF_numA_numPLT_numNLT[j-1][3] = countPLT;
+			zipcode_numF_numA_numPLT_numNLT[j-1][4] = countNLT;
+			countF = 0;
+			countA = 0;
+			countPLT = 0;
+			countNLT = 0;
+
+			// set new zipcode
+			console.log(i);
+			zipcode_numF_numA_numPLT_numNLT[j][0] = zipcode_callType[i][0];
+
+			// increment count2 or count3
+			if (zipcode_callType[i][1] == "Fire") {
+				countF++;
+			}
+			else if (zipcode_callType[i][1] == "Alarm") {
+				countA++;
+			}
+			else if (zipcode_callType[i][1] == "Potentially Life-Threatening") {
+				countPLT++;
+			}
+			else if (zipcode_callType[i][1] == "Non Life-threatening") {
+				countNLT++;
+			}
+		}
+	}
+	console.log(zipcode_callType);
+	console.log(zipcode_numF_numA_numPLT_numNLT);
 }
 
 function sortFunction(a, b) {
@@ -136,4 +230,4 @@ function sortFunction(a, b) {
     }
 }
 
-parseData(createGraph);
+parseData(createGraphOne);
